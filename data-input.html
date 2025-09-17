@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlacioNet | Select Region & Dataset</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #1e40af;
+            --secondary-teal: #0891b2;
+            --neutral-slate: #475569;
+            --light-gray: #f8fafc;
+            --success-green: #059669;
+            --error-red: #dc2626;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, var(--light-gray) 0%, #e2e8f0 100%); }
+        .navbar { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        .navbar-brand { font-weight: 700; font-size: 1.5rem; color: var(--primary-blue) !important; }
+        .main-content { padding: 6rem 0 2rem; }
+        .page-header { text-align: center; margin-bottom: 3rem; animation: fadeInUp 0.8s ease forwards; }
+        .page-title { font-size: 2.5rem; font-weight: 700; color: var(--primary-blue); }
+        .form-container { background: white; border-radius: 20px; padding: 2.5rem; box-shadow: 0 20px 40px rgba(30, 64, 175, 0.1); animation: fadeInUp 0.8s ease 0.2s forwards; }
+        .dataset-item { background: var(--light-gray); border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.2rem; transition: all 0.3s ease; cursor: pointer; }
+        .dataset-item.selected { border-color: var(--primary-blue); background: rgba(30, 64, 175, 0.05); }
+        .file-upload { border: 2px dashed #e2e8f0; border-radius: 12px; padding: 2rem; text-align: center; transition: all 0.3s ease; cursor: pointer; background: var(--light-gray); }
+        .file-upload:hover { border-color: var(--secondary-teal); }
+        .nav-button { background: linear-gradient(135deg, var(--primary-blue), var(--secondary-teal)); color: white; border: none; padding: 1rem 2.5rem; border-radius: 50px; font-weight: 600; }
+        .spinner { width: 40px; height: 40px; border-top: 4px solid var(--primary-blue); animation: spin 1s linear infinite; }
+        .error-message { color: var(--error-red); display: none; }
+        .success-message { color: var(--success-green); display: none; }
+        @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg fixed-top"><div class="container"><a class="navbar-brand" href="index.html"><i class="fas fa-mountain"></i> GlacioNet</a></div></nav>
+    
+    <main class="main-content">
+        <div class="container">
+            <div class="page-header">
+                <h1 class="page-title">Select Study Region and Data Sources</h1>
+            </div>
+
+            <div class="form-container">
+                <form id="dataInputForm">
+                    <div class="row">
+                        <div class="col-md-4 mb-3"><label class="form-label">Region</label><select class="form-select" id="regionSelect" required><option value="Himalayas">Himalayas</option><option value="Andes">Andes</option><option value="Alps">Alps</option></select></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Start Year</label><input type="number" class="form-control" id="startYear" value="2003"></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">End Year</label><input type="number" class="form-control" id="endYear" value="2022"></div>
+                    </div>
+                    
+                    <div class="form-section mt-4">
+                        <h3 class="h5 fw-bold">Upload Custom Dataset (Optional)</h3>
+                        <div class="file-upload" id="fileUploadArea">
+                            <i class="fas fa-cloud-upload-alt fa-2x text-secondary mb-2"></i>
+                            <div>Click to upload or drag and drop</div>
+                            <small class="text-muted">CSV with 'Date' and 'Value' columns</small>
+                            <input type="file" id="fileInput" class="d-none" accept=".csv">
+                        </div>
+                        <div class="success-message mt-2" id="fileSuccess"></div>
+                        <div class="error-message mt-2" id="fileError"></div>
+                    </div>
+
+                    <button type="submit" class="nav-button d-block mx-auto mt-4">Next → Preprocess Data</button>
+                </form>
+
+                <div id="loadingAnimation" class="text-center" style="display: none;">
+                    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>
+                    <p class="mt-2">Validating and processing data...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('dataInputForm');
+            const fileUploadArea = document.getElementById('fileUploadArea');
+            const fileInput = document.getElementById('fileInput');
+            const fileSuccess = document.getElementById('fileSuccess');
+            const fileError = document.getElementById('fileError');
+            
+            fileUploadArea.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handleFileSelect);
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                processAndNavigate();
+            });
+
+            function handleFileSelect(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                fileSuccess.style.display = 'none';
+                fileError.style.display = 'none';
+
+                if (!file.name.endsWith('.csv')) {
+                    fileError.textContent = 'Error: Please upload a valid CSV file.';
+                    fileError.style.display = 'block';
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const text = e.target.result;
+                        const { labels, actualData, predictedData } = parseAndProcessCsv(text);
+                        
+                        // Store parsed data in session storage for next pages
+                        const userUploadedData = { labels, actualData, predictedData };
+                        sessionStorage.setItem('userUploadedData', JSON.stringify(userUploadedData));
+                        
+                        fileSuccess.textContent = `Successfully processed '${file.name}' with ${labels.length} data rows.`;
+                        fileSuccess.style.display = 'block';
+                    } catch (error) {
+                        fileError.textContent = `Error processing file: ${error.message}`;
+                        fileError.style.display = 'block';
+                        sessionStorage.removeItem('userUploadedData');
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            function parseAndProcessCsv(csvText) {
+                const lines = csvText.trim().split('\n');
+                const headers = lines.shift().trim().split(',');
+
+                const labels = [];
+                const actualData = [];
+
+                lines.forEach(line => {
+                    const values = line.trim().split(',');
+                    if (values.length < 2) return;
+                    
+                    labels.push(values[0]); // First column for labels (e.g., Date)
+                    const value = parseFloat(values[1]); // Second column for actual values
+                    if (!isNaN(value)) {
+                        actualData.push(value);
+                    }
+                });
+
+                if (actualData.length === 0) {
+                    throw new Error("No valid numerical data found in the second column.");
+                }
+
+                // Generate predicted data by adding some noise to actual data
+                const predictedData = actualData.map(val => {
+                    const noise = (Math.random() - 0.5) * (val * 0.1); // Noise is up to 10% of the value
+                    return parseFloat((val + noise).toFixed(2));
+                });
+
+                return { labels, actualData, predictedData };
+            }
+
+            function processAndNavigate() {
+                form.style.display = 'none';
+                document.getElementById('loadingAnimation').style.display = 'block';
+
+                sessionStorage.setItem('glacioNetRegion', document.getElementById('regionSelect').value);
+                sessionStorage.setItem('glacioNetYears', `${document.getElementById('startYear').value}–${document.getElementById('endYear').value}`);
+                
+                setTimeout(() => {
+                    window.location.href = 'preprocessing.html';
+                }, 1500);
+            }
+        });
+    </script>
+</body>
+</html>

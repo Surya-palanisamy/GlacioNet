@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlacioNet | Visualization Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #2563eb;
+            --dark-bg: #1f2937;
+            --light-bg: #f8fafc;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--light-bg); }
+        .dashboard-header {
+            background: linear-gradient(135deg, var(--primary-blue), #1e40af);
+            color: white; padding: 2rem 0;
+            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.3);
+        }
+        .dashboard-header a { color: white; text-decoration: none; }
+        .dashboard-card {
+            background: white; border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 1.5rem;
+        }
+        .card-header { background: #f8fafc; padding: 1rem 1.5rem; }
+        .card-title { font-size: 1.25rem; font-weight: 600; color: var(--dark-bg); }
+        .map-container { height: 450px; background: #e2e8f0; border-radius: 8px; }
+        .year-display { text-align: center; font-size: 2rem; font-weight: 700; color: var(--primary-blue); }
+        .graph-placeholder { height: 250px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #6c757d; }
+        .download-card { border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; text-align: center; transition: all 0.3s ease; cursor: pointer; }
+        .download-card:hover { border-color: var(--primary-blue); transform: translateY(-2px); }
+        .download-icon { font-size: 2.5rem; color: var(--primary-blue); }
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; transition: opacity 0.5s ease-out; }
+        .loading-spinner { width: 60px; height: 60px; border: 4px solid #e2e8f0; border-top: 4px solid var(--primary-blue); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div></div>
+
+    <header class="dashboard-header">
+        <div class="container">
+            <a href="index.html">
+                <h1 class="h2">GlacioNet | Visualization Dashboard</h1>
+            </a>
+            <p class="lead mb-0">Explore glacier retreat & water stress trends over time.</p>
+        </div>
+    </header>
+
+    <main class="container my-4">
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="dashboard-card">
+                    <div class="card-header"><h3 class="card-title"><i class="fas fa-map me-2"></i>Interactive Map Viewer</h3></div>
+                    <div class="card-body">
+                        <div class="map-container d-flex align-items-center justify-content-center">
+                            <p>Glacier Extent for <b id="mapYear">2003</b></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="dashboard-card">
+                    <div class="card-header"><h3 class="card-title"><i class="fas fa-chart-line me-2"></i>Trend Analysis</h3></div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6"><div class="graph-placeholder">Glacier Melt Trends</div></div>
+                            <div class="col-md-6"><div class="graph-placeholder">FSI Trends Analysis</div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="dashboard-card">
+                    <div class="card-header"><h3 class="card-title"><i class="fas fa-clock me-2"></i>Historical Timeline</h3></div>
+                    <div class="card-body">
+                        <div class="year-display" id="yearDisplay">2003</div>
+                        <input type="range" class="form-range" id="timeSlider" min="2003" max="2022" value="2003" step="1">
+                        <div class="d-flex justify-content-between"><small>2003</small><small>2022</small></div>
+                    </div>
+                </div>
+                <div class="dashboard-card">
+                    <div class="card-header"><h3 class="card-title"><i class="fas fa-download me-2"></i>Export & Share</h3></div>
+                    <div class="card-body">
+                        <div class="download-card mb-3" onclick="alert('Downloading CSV data...')">
+                            <div class="download-icon"><i class="fas fa-file-csv"></i></div>
+                            <div><b>Export CSV/Excel</b></div>
+                            <small class="text-muted">Download raw dataset</small>
+                        </div>
+                        <div class="download-card" onclick="alert('Generating PDF report...')">
+                            <div class="download-icon"><i class="fas fa-file-pdf"></i></div>
+                            <div><b>PDF Report</b></div>
+                            <small class="text-muted">Generate full analysis</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Simulate loading
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            setTimeout(() => {
+                loadingOverlay.style.opacity = '0';
+                setTimeout(() => loadingOverlay.style.display = 'none', 500);
+            }, 1500);
+
+            const timeSlider = document.getElementById('timeSlider');
+            const yearDisplay = document.getElementById('yearDisplay');
+            const mapYear = document.getElementById('mapYear');
+
+            timeSlider.addEventListener('input', function() {
+                const year = this.value;
+                yearDisplay.textContent = year;
+                mapYear.textContent = year;
+                // Add visualization update logic here
+            });
+        });
+    </script>
+</body>
+</html>

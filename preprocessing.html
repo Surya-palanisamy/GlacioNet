@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlacioNet | Data Preprocessing</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #1e40af;
+            --secondary-teal: #0891b2;
+            --neutral-slate: #475569;
+            --light-gray: #f8fafc;
+            --success-green: #059669;
+        }
+        body { font-family: 'Segoe UI', sans-serif; color: var(--neutral-slate); background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); }
+        .navbar { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        .navbar-brand { font-weight: 700; font-size: 1.5rem; color: var(--primary-blue) !important; }
+        .main-content { padding: 6rem 0 2rem; }
+        .page-header { text-align: center; margin-bottom: 3rem; animation: fadeInUp 0.8s ease forwards; }
+        .page-header h1 { font-size: 2.5rem; font-weight: 700; color: var(--primary-blue); }
+        .processing-container, .preview-container { background: white; border-radius: 16px; box-shadow: 0 10px 40px rgba(30, 64, 175, 0.1); padding: 2rem; margin-bottom: 2rem; animation: fadeInUp 0.8s ease 0.2s forwards; }
+        .processing-step { display: flex; align-items: center; padding: 1rem; margin-bottom: 1rem; border-radius: 12px; background: var(--light-gray); }
+        .processing-step.completed { background: rgba(5, 150, 105, 0.05); border-left: 4px solid var(--success-green); }
+        .run-prediction-btn { background: linear-gradient(135deg, var(--primary-blue), var(--secondary-teal)); border: none; color: white; padding: 1rem 2rem; border-radius: 12px; font-size: 1.1rem; opacity: 0.5; cursor: not-allowed; display: block; margin: 2rem auto 0; }
+        .run-prediction-btn:enabled { opacity: 1; cursor: pointer; }
+        .spinner { width: 20px; height: 20px; border-top: 2px solid transparent; animation: spin 1s linear infinite; }
+        @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg fixed-top"><div class="container"><a class="navbar-brand" href="index.html"><i class="fas fa-mountain"></i> GlacioNet</a></div></nav>
+    
+    <main class="main-content">
+        <div class="container">
+            <div class="page-header">
+                <h1 id="pageTitle">Preparing Your Data</h1>
+                <p id="pageSubtitle" class="text-muted">Cleaning and aligning datasets for accurate predictions...</p>
+            </div>
+
+            <div class="processing-container">
+                <h3 class="mb-4"><i class="fas fa-cogs me-2"></i>Data Processing Status</h3>
+                <div class="processing-step" id="step1"><div class="progress w-100"><div class="progress-bar" style="width: 100%;"></div></div><span class="ms-3 fw-bold">Cleaning Data...</span></div>
+                <div class="processing-step" id="step2"><div class="progress w-100"><div class="progress-bar" style="width: 100%;"></div></div><span class="ms-3 fw-bold">Standardizing Units...</span></div>
+                <div class="processing-step" id="step3"><div class="progress w-100"><div class="progress-bar" style="width: 100%;"></div></div><span class="ms-3 fw-bold">Merging Datasets...</span></div>
+            </div>
+
+            <div class="preview-container" id="preview-container" style="display: none;">
+                <h3 class="mb-3"><i class="fas fa-table me-2"></i>Preprocessed Data Preview</h3>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead><tr><th>Date</th><th>Snow Cover (%)</th><th>Surface Temp (°C)</th><th>Ice Extent (km²)</th><th>Mass Balance (Gt)</th><th>Precipitation (mm)</th></tr></thead>
+                        <tbody id="preview-data"></tbody>
+                    </table>
+                </div>
+                <div class="alert alert-success mt-3"><i class="fas fa-check-circle me-2"></i>Data preprocessing completed successfully!</div>
+            </div>
+
+            <button class="run-prediction-btn" id="runPredictionBtn" disabled><i class="fas fa-brain me-2"></i>Run Prediction →</button>
+        </div>
+    </main>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const region = sessionStorage.getItem('glacioNetRegion') || 'Selected Region';
+            const years = sessionStorage.getItem('glacioNetYears') || 'period';
+
+            document.getElementById('pageTitle').textContent = `Preparing Data for ${region}`;
+            document.getElementById('pageSubtitle').textContent = `Analyzing data from ${years}. This involves handling missing values, standardizing units, and combining sources.`;
+            
+            populatePreviewTable();
+            startProcessingAnimation();
+
+            document.getElementById('runPredictionBtn').addEventListener('click', function() {
+                if (!this.disabled) {
+                    this.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Initializing AI Model...';
+                    this.disabled = true;
+                    setTimeout(() => window.location.href = 'prediction.html', 1500);
+                }
+            });
+        });
+
+        function populatePreviewTable() {
+            const tbody = document.getElementById('preview-data');
+            const uploadedDataStr = sessionStorage.getItem('userUploadedData');
+
+            if (uploadedDataStr) {
+                // Use user's uploaded data for the preview
+                const data = JSON.parse(uploadedDataStr);
+                tbody.innerHTML = ''; // Clear existing rows
+                for (let i = 0; i < Math.min(data.labels.length, 8); i++) {
+                    const row = `<tr>
+                        <td>${data.labels[i]}</td>
+                        <td>${data.actualData[i]}</td>
+                        <td>${(Math.random() * -15).toFixed(1)}</td>
+                        <td>${(1200 + Math.random() * 100).toFixed(0)}</td>
+                        <td>${(-0.5 + Math.random()).toFixed(2)}</td>
+                        <td>${(50 + Math.random() * 50).toFixed(0)}</td>
+                    </tr>`;
+                    tbody.innerHTML += row;
+                }
+                 document.querySelector('#preview-container table thead th:nth-child(2)').textContent = "Uploaded Value";
+            } else {
+                // Use default sample data
+                let defaultHtml = '';
+                for (let i = 0; i < 8; i++) {
+                    defaultHtml += `<tr>
+                        <td>2022-0${i+1}-01</td>
+                        <td>${(80 - i*2 + Math.random()*5).toFixed(0)}</td>
+                        <td>${(-10 + i*1.5 + Math.random()*2).toFixed(1)}</td>
+                        <td>${(1180 - i*5 + Math.random()*10).toFixed(0)}</td>
+                        <td>${(-0.3 - i*0.05 + Math.random()*0.1).toFixed(2)}</td>
+                        <td>${(60 + Math.sin(i)*20 + Math.random()*10).toFixed(0)}</td>
+                    </tr>`;
+                }
+                tbody.innerHTML = defaultHtml;
+            }
+        }
+
+        async function startProcessingAnimation() {
+            const steps = document.querySelectorAll('.processing-step');
+            for (let i = 0; i < steps.length; i++) {
+                await new Promise(resolve => setTimeout(resolve, 800));
+                steps[i].classList.add('completed');
+            }
+            document.getElementById('preview-container').style.display = 'block';
+            document.getElementById('runPredictionBtn').disabled = false;
+        }
+    </script>
+</body>
+</html>
