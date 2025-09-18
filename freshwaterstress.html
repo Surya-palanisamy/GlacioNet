@@ -1,143 +1,207 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GlacioNet | Freshwater Stress Assessment</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
-    <style>
-        :root {
-            --primary-blue: #2563eb;
-            --success-green: #059669;
-            --warning-yellow: #d97706;
-            --danger-red: #dc2626;
-        }
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f9ff; }
-        .hero-section { background: linear-gradient(135deg, var(--primary-blue), #1e40af); color: white; padding: 3rem 0; }
-        .formula-card { background: white; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); padding: 1.5rem; }
-        .formula { font-size: 1.5rem; font-weight: bold; color: var(--primary-blue); text-align: center; }
-        .input-group-text { cursor: pointer; }
-        .results-section { display: none; }
-        .fsi-value-card { background: white; border-radius: 20px; padding: 2rem; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.1); }
-        .fsi-value { font-size: 4rem; font-weight: bold; }
-        .risk-indicator { padding: 1rem; border-radius: 12px; color: white; text-align: center; }
-        .risk-low { background: var(--success-green); }
-        .risk-medium { background: var(--warning-yellow); }
-        .risk-high { background: var(--danger-red); }
-        #stress-map { height: 400px; border-radius: 15px; }
-        .next-btn { background: var(--primary-blue); border: none; color: white; opacity: 0.5; cursor: not-allowed; }
-        .next-btn.enabled { opacity: 1; cursor: pointer; }
-        .loading-spinner { display: none; margin: 1rem auto; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .spinner-border { animation: spin 1s linear infinite; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GlacioNet | Freshwater Stress Assessment</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
+  <style>
+    :root {
+      --primary-blue: #2563eb;
+      --success-green: #059669;
+      --warning-yellow: #d97706;
+      --danger-red: #dc2626;
+    }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f9ff; }
+    .hero-section { background: linear-gradient(135deg, var(--primary-blue), #1e40af); color: white; padding: 3rem 0; }
+    .formula-card { background: white; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); padding: 1.5rem; }
+    .formula { font-size: 1.5rem; font-weight: bold; color: var(--primary-blue); text-align: center; }
+    .input-group-text { cursor: pointer; }
+    .results-section { display: none; }
+    .fsi-value-card { background: white; border-radius: 20px; padding: 2rem; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.1); }
+    .fsi-value { font-size: 4rem; font-weight: bold; }
+    .risk-indicator { padding: 1rem; border-radius: 12px; color: white; text-align: center; }
+    .risk-low { background: var(--success-green); }
+    .risk-medium { background: var(--warning-yellow); }
+    .risk-high { background: var(--danger-red); }
+    #stress-map { height: 500px; border-radius: 15px; }
+    .next-btn { background: var(--primary-blue); border: none; color: white; opacity: 0.5; cursor: not-allowed; }
+    .next-btn.enabled { opacity: 1; cursor: pointer; }
+    .loading-spinner { display: none; margin: 1rem auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-border { animation: spin 1s linear infinite; }
+    /* Legend styling */
+    .legend {
+      background: white;
+      padding: 10px;
+      line-height: 1.4;
+      font-size: 14px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+    .legend i {
+      width: 18px;
+      height: 18px;
+      float: left;
+      margin-right: 8px;
+      opacity: 0.7;
+    }
+  </style>
 </head>
 <body>
-    <section class="hero-section">
-        <div class="container text-center">
-            <h1 class="display-5 fw-bold">Freshwater Stress Index (FSI)</h1>
-            <p class="lead">Assess water scarcity risk based on predicted runoff, population, and agricultural demand.</p>
-        </div>
-    </section>
+  <section class="hero-section">
+    <div class="container text-center">
+      <h1 class="display-5 fw-bold">Freshwater Stress Index (FSI)</h1>
+      <p class="lead">Assess water scarcity risk based on predicted runoff, population, and agricultural demand.</p>
+    </div>
+  </section>
 
-    <div class="container my-5">
-        <div class="formula-card mb-5"><div class="formula">FSI = Runoff / (Population × Demand)</div></div>
+  <div class="container my-5">
+    <div class="formula-card mb-5"><div class="formula">FSI = Runoff / (Population × Demand)</div></div>
 
-        <div class="row">
-            <div class="col-lg-8 mx-auto">
-                <h3 class="text-center mb-4">Input Parameters</h3>
-                <div class="input-group mb-3">
-                    <span class="input-group-text">Population</span>
-                    <input type="number" class="form-control" id="population" value="1500000">
-                </div>
-                <div class="input-group mb-3">
-                    <span class="input-group-text">Agri. Demand (m³/person/yr)</span>
-                    <input type="number" class="form-control" id="agricultural-demand" value="850">
-                </div>
-                <div class="input-group mb-4">
-                    <span class="input-group-text">Predicted Runoff (m³/yr)</span>
-                    <input type="number" class="form-control" id="predicted-runoff" value="2800000000">
-                </div>
-                <div class="text-center">
-                    <button class="btn btn-success btn-lg" onclick="calculateFSI()">Calculate FSI</button>
-                    <div class="spinner-border text-primary loading-spinner" id="loading-spinner"></div>
-                </div>
-            </div>
+    <div class="row">
+      <div class="col-lg-8 mx-auto">
+        <h3 class="text-center mb-4">Input Parameters</h3>
+        <div class="input-group mb-3">
+          <span class="input-group-text">Population</span>
+          <input type="number" class="form-control" id="population" value="1500000">
         </div>
-
-        <div class="results-section mt-5" id="results-section">
-            <div class="row">
-                <div class="col-lg-6 mx-auto">
-                    <div class="fsi-value-card">
-                        <h3>Freshwater Stress Index</h3>
-                        <div class="fsi-value" id="fsi-display">0.00</div>
-                        <p class="text-muted" id="fsi-explanation"></p>
-                    </div>
-                </div>
-            </div>
-            <div class="row mt-4">
-                <div class="col-12"><h4 class="text-center mb-3">Regional Stress Zones</h4><div id="stress-map"></div></div>
-            </div>
-            <div class="text-center mt-4">
-                <button class="btn next-btn btn-lg" id="next-btn" onclick="navigateNext()">Next → Visualization</button>
-            </div>
+        <div class="input-group mb-3">
+          <span class="input-group-text">Agri. Demand (m³/person/yr)</span>
+          <input type="number" class="form-control" id="agricultural-demand" value="850">
         </div>
+        <div class="input-group mb-4">
+          <span class="input-group-text">Predicted Runoff (m³/yr)</span>
+          <input type="number" class="form-control" id="predicted-runoff" value="2800000000">
+        </div>
+        <div class="text-center">
+          <button class="btn btn-success btn-lg" onclick="calculateFSI()">Calculate FSI</button>
+          <div class="spinner-border text-primary loading-spinner" id="loading-spinner"></div>
+        </div>
+      </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        let map;
-        function calculateFSI() {
-            document.getElementById('loading-spinner').style.display = 'block';
-            setTimeout(() => {
-                const population = parseFloat(document.getElementById('population').value);
-                const agriculturalDemand = parseFloat(document.getElementById('agricultural-demand').value);
-                const predictedRunoff = parseFloat(document.getElementById('predicted-runoff').value);
-                const fsi = predictedRunoff / (population * agriculturalDemand);
-                
-                document.getElementById('loading-spinner').style.display = 'none';
-                displayResults(fsi);
-            }, 1500);
-        }
+    <div class="results-section mt-5" id="results-section">
+      <div class="row">
+        <div class="col-lg-6 mx-auto">
+          <div class="fsi-value-card">
+            <h3>Freshwater Stress Index</h3>
+            <div class="fsi-value" id="fsi-display">0.00</div>
+            <p class="text-muted" id="fsi-explanation"></p>
+          </div>
+        </div>
+      </div>
+      <div class="row mt-4">
+        <div class="col-12">
+          <h4 class="text-center mb-3">Regional Stress Zones</h4>
+          <div id="stress-map"></div>
+        </div>
+      </div>
+     
+    </div>
+  </div>
 
-        function displayResults(fsi) {
-            document.getElementById('results-section').style.display = 'block';
-            document.getElementById('fsi-display').textContent = fsi.toFixed(3);
-            
-            let riskLevel, riskColor, explanation;
-            if (fsi < 0.5) { riskLevel = 'Low Risk'; riskColor = 'var(--success-green)'; explanation = 'Adequate resources available.'; }
-            else if (fsi < 1.0) { riskLevel = 'Medium Risk'; riskColor = 'var(--warning-yellow)'; explanation = 'Moderate water stress.'; }
-            else { riskLevel = 'High Risk'; riskColor = 'var(--danger-red)'; explanation = 'Severe water stress.'; }
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
 
-            document.getElementById('fsi-display').style.color = riskColor;
-            document.getElementById('fsi-explanation').innerHTML = `<strong style="color:${riskColor}">${riskLevel}</strong>: ${explanation}`;
-            
-            initializeMap(fsi);
-            document.getElementById('next-btn').classList.add('enabled');
-        }
+  <script>
+    let map, heatLayer;
 
-        function initializeMap(fsi) {
-            if (map) map.remove();
-            map = L.map('stress-map').setView([45.0, -110.0], 4);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    function calculateFSI() {
+      document.getElementById('loading-spinner').style.display = 'block';
+      setTimeout(() => {
+        const population = parseFloat(document.getElementById('population').value);
+        const agriculturalDemand = parseFloat(document.getElementById('agricultural-demand').value);
+        const predictedRunoff = parseFloat(document.getElementById('predicted-runoff').value);
+        const fsi = predictedRunoff / (population * agriculturalDemand);
 
-            const stressZones = [
-                { coords: [45.5, -110.5], stress: fsi * 0.8 }, { coords: [44.8, -109.2], stress: fsi * 1.2 }
-            ];
-            stressZones.forEach(zone => {
-                let color = zone.stress < 0.5 ? 'green' : zone.stress < 1.0 ? 'orange' : 'red';
-                L.circle(zone.coords, { color, fillColor: color, fillOpacity: 0.5, radius: 50000 }).addTo(map)
-                    .bindPopup(`<b>FSI: ${zone.stress.toFixed(3)}</b>`);
-            });
-        }
-        
-        function navigateNext() {
-            if (document.getElementById('next-btn').classList.contains('enabled')) {
-                window.location.href = 'visual.html';
-            }
-        }
-    </script>
+        document.getElementById('loading-spinner').style.display = 'none';
+        displayResults(fsi);
+      }, 1500);
+    }
+
+    function displayResults(fsi) {
+      document.getElementById('results-section').style.display = 'block';
+      document.getElementById('fsi-display').textContent = fsi.toFixed(3);
+
+      let riskLevel, riskColor, explanation;
+      if (fsi < 0.5) { riskLevel = 'Low Risk'; riskColor = 'var(--success-green)'; explanation = 'Adequate resources available.'; }
+      else if (fsi < 1.0) { riskLevel = 'Medium Risk'; riskColor = 'var(--warning-yellow)'; explanation = 'Moderate water stress.'; }
+      else { riskLevel = 'High Risk'; riskColor = 'var(--danger-red)'; explanation = 'Severe water stress.'; }
+
+      document.getElementById('fsi-display').style.color = riskColor;
+      document.getElementById('fsi-explanation').innerHTML = `<strong style="color:${riskColor}">${riskLevel}</strong>: ${explanation}`;
+
+      initializeMap(fsi);
+      document.getElementById('next-btn').classList.add('enabled');
+    }
+
+    function initializeMap(fsi) {
+      if (map) map.remove();
+      map = L.map('stress-map').setView([45.0, -110.0], 4);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+      // Example stress zones
+      const stressZones = [
+        { name: "Zone A", coords: [45.5, -110.5], stress: fsi * 0.8 },
+        { name: "Zone B", coords: [44.8, -109.2], stress: fsi * 1.2 },
+        { name: "Zone C", coords: [46.2, -111.0], stress: fsi * 0.6 }
+      ];
+
+      const heatPoints = [];
+
+      stressZones.forEach(zone => {
+        let color = zone.stress < 0.5 ? 'green' : zone.stress < 1.0 ? 'orange' : 'red';
+        L.circle(zone.coords, {
+          color,
+          fillColor: color,
+          fillOpacity: 0.5,
+          radius: 50000
+        }).addTo(map).bindPopup(`<b>${zone.name}</b><br>FSI: ${zone.stress.toFixed(3)}`);
+
+        // Heatmap points
+        heatPoints.push([zone.coords[0], zone.coords[1], zone.stress]);
+      });
+
+      // Heatmap overlay (simple intensity visualization)
+      if (heatLayer) map.removeLayer(heatLayer);
+      heatLayer = L.heatLayer(heatPoints, { radius: 40, blur: 25, maxZoom: 10 }).addTo(map);
+
+      // Add scale bar
+      L.control.scale().addTo(map);
+
+      // Add search bar
+      L.Control.geocoder().addTo(map);
+
+      // Add legend
+      const legend = L.control({ position: "bottomright" });
+      legend.onAdd = function () {
+        const div = L.DomUtil.create("div", "legend");
+        div.innerHTML += "<h6>Risk Levels</h6>";
+        div.innerHTML += '<i style="background: green"></i><span>Low Risk (FSI < 0.5)</span><br>';
+        div.innerHTML += '<i style="background: orange"></i><span>Medium Risk (0.5 ≤ FSI < 1.0)</span><br>';
+        div.innerHTML += '<i style="background: red"></i><span>High Risk (FSI ≥ 1.0)</span><br>';
+        return div;
+      };
+      legend.addTo(map);
+
+      // Try to locate user
+      map.locate({ setView: false, maxZoom: 6 });
+      map.on('locationfound', function(e) {
+        L.marker(e.latlng).addTo(map).bindPopup("You are here").openPopup();
+      });
+    }
+
+    function navigateNext() {
+      if (document.getElementById('next-btn').classList.contains('enabled')) {
+        window.location.href = 'visual.html';
+      }
+    }
+  </script>
+  <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 </body>
 </html>
