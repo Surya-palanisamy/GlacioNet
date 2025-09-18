@@ -1,124 +1,187 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GlacioNet | Visualization Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --primary-blue: #2563eb;
-            --dark-bg: #1f2937;
-            --light-bg: #f8fafc;
-        }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--light-bg); }
-        .dashboard-header {
-            background: linear-gradient(135deg, var(--primary-blue), #1e40af);
-            color: white; padding: 2rem 0;
-            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.3);
-        }
-        .dashboard-header a { color: white; text-decoration: none; }
-        .dashboard-card {
-            background: white; border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            margin-bottom: 1.5rem;
-        }
-        .card-header { background: #f8fafc; padding: 1rem 1.5rem; }
-        .card-title { font-size: 1.25rem; font-weight: 600; color: var(--dark-bg); }
-        .map-container { height: 450px; background: #e2e8f0; border-radius: 8px; }
-        .year-display { text-align: center; font-size: 2rem; font-weight: 700; color: var(--primary-blue); }
-        .graph-placeholder { height: 250px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #6c757d; }
-        .download-card { border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; text-align: center; transition: all 0.3s ease; cursor: pointer; }
-        .download-card:hover { border-color: var(--primary-blue); transform: translateY(-2px); }
-        .download-icon { font-size: 2.5rem; color: var(--primary-blue); }
-        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; transition: opacity 0.5s ease-out; }
-        .loading-spinner { width: 60px; height: 60px; border: 4px solid #e2e8f0; border-top: 4px solid var(--primary-blue); border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GlacioNet | Visualization Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet" />
+  <style>
+    :root { --primary-blue: #2563eb; --secondary-blue:#1e40af; --light-bg:#f8fafc; }
+    body { font-family: 'Segoe UI', sans-serif; background: var(--light-bg); }
+    .dashboard-header { background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue)); color: white; padding: 2rem; }
+    #map { height: 450px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+    .year-display { font-size: 2rem; font-weight: bold; color: var(--primary-blue); text-align: center; }
+    canvas { background: #fff; border-radius: 8px; padding: 0.5rem; }
+    .download-card { border: 2px solid #e2e8f0; border-radius: 12px; padding: 1rem; text-align: center; transition: 0.3s; cursor: pointer; }
+    .download-card:hover { border-color: var(--primary-blue); transform: translateY(-2px); }
+    .download-icon { font-size: 2rem; color: var(--primary-blue); }
+  </style>
 </head>
 <body>
-    <div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div></div>
+  <!-- Header -->
+  <header class="dashboard-header text-center">
+    <h1>GlacioNet | Visualization Dashboard</h1>
+    <p>Explore Glacier Retreat & Water Stress Trends (2003–2022)</p>
+  </header>
 
-    <header class="dashboard-header">
-        <div class="container">
-            <a href="index.html">
-                <h1 class="h2">GlacioNet | Visualization Dashboard</h1>
-            </a>
-            <p class="lead mb-0">Explore glacier retreat & water stress trends over time.</p>
+  <main class="container my-4">
+    <div class="row g-4">
+      <!-- Map -->
+      <div class="col-lg-8">
+        <h4><i class="fas fa-map"></i> Glacier & Water Stress Map</h4>
+        <div id="map"></div>
+      </div>
+
+      <!-- Timeline -->
+      <div class="col-lg-4 text-center">
+        <h4><i class="fas fa-clock"></i> Timeline</h4>
+        <div class="year-display" id="yearDisplay">2003</div>
+        <input type="range" id="timeSlider" class="form-range" min="2003" max="2022" value="2003">
+        <div class="d-flex justify-content-between"><small>2003</small><small>2022</small></div>
+        <div class="mt-3">
+          <button class="btn btn-primary" id="playBtn"><i class="fas fa-play"></i> Play</button>
+          <button class="btn btn-danger" id="pauseBtn" style="display:none"><i class="fas fa-pause"></i> Pause</button>
         </div>
-    </header>
+      </div>
+    </div>
 
-    <main class="container my-4">
-        <div class="row">
-            <div class="col-lg-8">
-                <div class="dashboard-card">
-                    <div class="card-header"><h3 class="card-title"><i class="fas fa-map me-2"></i>Interactive Map Viewer</h3></div>
-                    <div class="card-body">
-                        <div class="map-container d-flex align-items-center justify-content-center">
-                            <p>Glacier Extent for <b id="mapYear">2003</b></p>
-                        </div>
-                    </div>
-                </div>
-                <div class="dashboard-card">
-                    <div class="card-header"><h3 class="card-title"><i class="fas fa-chart-line me-2"></i>Trend Analysis</h3></div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6"><div class="graph-placeholder">Glacier Melt Trends</div></div>
-                            <div class="col-md-6"><div class="graph-placeholder">FSI Trends Analysis</div></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <!-- Charts -->
+    <div class="row g-4 mt-4">
+      <div class="col-md-6">
+        <h5><i class="fas fa-chart-area"></i> Glacier Melt Trends</h5>
+        <canvas id="glacierChart"></canvas>
+      </div>
+      <div class="col-md-6">
+        <h5><i class="fas fa-water"></i> FSI Trends</h5>
+        <canvas id="fsiChart"></canvas>
+      </div>
+    </div>
 
-            <div class="col-lg-4">
-                <div class="dashboard-card">
-                    <div class="card-header"><h3 class="card-title"><i class="fas fa-clock me-2"></i>Historical Timeline</h3></div>
-                    <div class="card-body">
-                        <div class="year-display" id="yearDisplay">2003</div>
-                        <input type="range" class="form-range" id="timeSlider" min="2003" max="2022" value="2003" step="1">
-                        <div class="d-flex justify-content-between"><small>2003</small><small>2022</small></div>
-                    </div>
-                </div>
-                <div class="dashboard-card">
-                    <div class="card-header"><h3 class="card-title"><i class="fas fa-download me-2"></i>Export & Share</h3></div>
-                    <div class="card-body">
-                        <div class="download-card mb-3" onclick="alert('Downloading CSV data...')">
-                            <div class="download-icon"><i class="fas fa-file-csv"></i></div>
-                            <div><b>Export CSV/Excel</b></div>
-                            <small class="text-muted">Download raw dataset</small>
-                        </div>
-                        <div class="download-card" onclick="alert('Generating PDF report...')">
-                            <div class="download-icon"><i class="fas fa-file-pdf"></i></div>
-                            <div><b>PDF Report</b></div>
-                            <small class="text-muted">Generate full analysis</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <!-- Downloads -->
+    <div class="row g-4 mt-4">
+      <div class="col-md-4">
+        <div class="download-card" onclick="alert('Exporting CSV...')">
+          <div class="download-icon"><i class="fas fa-file-csv"></i></div>
+          <b>Export CSV</b><br><small>Download raw dataset</small>
         </div>
-    </main>
-    
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Simulate loading
-            const loadingOverlay = document.getElementById('loadingOverlay');
-            setTimeout(() => {
-                loadingOverlay.style.opacity = '0';
-                setTimeout(() => loadingOverlay.style.display = 'none', 500);
-            }, 1500);
+      </div>
+      <div class="col-md-4">
+        <div class="download-card" onclick="alert('Generating PDF report...')">
+          <div class="download-icon"><i class="fas fa-file-pdf"></i></div>
+          <b>PDF Report</b><br><small>Full analysis with charts</small>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="download-card" onclick="alert('Capturing screenshot...')">
+          <div class="download-icon"><i class="fas fa-camera"></i></div>
+          <b>Screenshot</b><br><small>Save dashboard view</small>
+        </div>
+      </div>
+    </div>
+  </main>
 
-            const timeSlider = document.getElementById('timeSlider');
-            const yearDisplay = document.getElementById('yearDisplay');
-            const mapYear = document.getElementById('mapYear');
+  <!-- Scripts -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    let map, glacierLayer, stressMarkers=[], playInterval, isPlaying=false;
+    const years = Array.from({length:20}, (_,i)=>2003+i);
 
-            timeSlider.addEventListener('input', function() {
-                const year = this.value;
-                yearDisplay.textContent = year;
-                mapYear.textContent = year;
-                // Add visualization update logic here
-            });
-        });
-    </script>
+    // Fake glacier + FSI dataset
+    const data = years.map(y=>({
+      year:y,
+      glacier: 100 - (y-2003)*2.2 + Math.random()*2, // % of 2003 volume
+      fsi: 0.3 + (y-2003)*0.035 + (Math.random()*0.1)
+    }));
+
+    // Simplified glacier polygons (demo only!)
+    const glacierData = {
+      2003: { "type":"FeatureCollection","features":[
+        { "type":"Feature","geometry":{"type":"Polygon","coordinates":[[[79,30.3],[79.3,30.3],[79.3,30.6],[79,30.6]]]}}
+      ]},
+      2022: { "type":"FeatureCollection","features":[
+        { "type":"Feature","geometry":{"type":"Polygon","coordinates":[[[79,30.3],[79.15,30.3],[79.15,30.55],[79,30.55]]]}}
+      ]}
+    };
+
+    function initMap(){
+      map=L.map('map').setView([30.3,79.1],7);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+      showYear(2003);
+    }
+
+    function showGlacier(year){
+      if(glacierLayer) map.removeLayer(glacierLayer);
+      glacierLayer=L.geoJSON(glacierData[year]||glacierData[2022],
+        {style:{color:"blue",fillColor:"lightblue",fillOpacity:0.4}}).addTo(map);
+    }
+
+    function showStress(year){
+      stressMarkers.forEach(m=>map.removeLayer(m));
+      stressMarkers=[];
+      const base=data.find(d=>d.year===year).fsi;
+      const zones=[
+        {name:"Uttarakhand",coords:[30.0668,79.0193],stress:base*0.9},
+        {name:"Himachal",coords:[31.1048,77.1734],stress:base*1.1},
+        {name:"Ladakh",coords:[34.1526,77.5770],stress:base*1.2},
+        {name:"Sikkim",coords:[27.533,88.512],stress:base*0.8}
+      ];
+      zones.forEach(z=>{
+        const color=z.stress<0.5?'green':z.stress<1?'orange':'red';
+        const marker=L.circle(z.coords,{color,fillColor:color,fillOpacity:0.5,radius:50000})
+          .bindPopup(`<b>${z.name}</b><br>FSI: ${z.stress.toFixed(2)} (${year})`);
+        marker.addTo(map); stressMarkers.push(marker);
+      });
+    }
+
+    function showYear(year){
+      document.getElementById('yearDisplay').textContent=year;
+      document.getElementById('timeSlider').value=year;
+      showGlacier(year);
+      showStress(year);
+    }
+
+    // Charts
+    let glacierChart,fsiChart;
+    function initCharts(){
+      glacierChart=new Chart(document.getElementById('glacierChart'),{
+        type:'line',
+        data:{labels:years,datasets:[{label:'Glacier Volume (% of 2003)',data:data.map(d=>d.glacier),borderColor:'#2563eb',fill:false}]}
+      });
+      fsiChart=new Chart(document.getElementById('fsiChart'),{
+        type:'line',
+        data:{labels:years,datasets:[{label:'FSI Index',data:data.map(d=>d.fsi),borderColor:'#f59e0b',fill:false}]}
+      });
+    }
+
+    // Playback
+    function playTimeline(){
+      if(isPlaying) return;
+      isPlaying=true;
+      document.getElementById('playBtn').style.display='none';
+      document.getElementById('pauseBtn').style.display='inline-block';
+      let year=parseInt(document.getElementById('timeSlider').value);
+      playInterval=setInterval(()=>{
+        year=year>=2022?2003:year+1;
+        showYear(year);
+      },1000);
+    }
+    function pauseTimeline(){
+      clearInterval(playInterval);
+      isPlaying=false;
+      document.getElementById('playBtn').style.display='inline-block';
+      document.getElementById('pauseBtn').style.display='none';
+    }
+
+    document.addEventListener('DOMContentLoaded',()=>{
+      initMap();
+      initCharts();
+      document.getElementById('timeSlider').addEventListener('input',e=>showYear(parseInt(e.target.value)));
+      document.getElementById('playBtn').addEventListener('click',playTimeline);
+      document.getElementById('pauseBtn').addEventListener('click',pauseTimeline);
+    });
+  </script>
 </body>
 </html>
